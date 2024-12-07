@@ -194,6 +194,33 @@ namespace TestGenerator
             Console.WriteLine($"{message} - {(passed ? "Успешно" : "Ошибка")}");
 
         }
+        //метод для проверки проверить равенство размера датасета произведению
+        //количеств уникальных значений каждой колонки
+        static bool CheckDatasetSize(List<TupleWrapperInt> tuples)
+        {
+            if (tuples == null || tuples.Count == 0) return true; // Пустой датасет - условие выполняется
+
+            int columnCount = tuples[0].Values.Length; // Количество столбцов
+            if (tuples.Any(t => t.Values.Length != columnCount))
+            {
+                throw new ArgumentException("Все кортежи должны иметь одинаковое количество столбцов.");
+            }
+
+            long datasetSize = tuples.Count;
+            long productOfUniqueCounts = 1;
+
+            for (int i = 0; i < columnCount; i++)
+            {
+                var uniqueValues = tuples.Select(t => t.Values[i]).Distinct().Count();
+                productOfUniqueCounts *= uniqueValues;
+                if (productOfUniqueCounts > long.MaxValue / uniqueValues) //Проверка переполнения
+                {
+                    throw new OverflowException("Переполнение при вычислении произведения.");
+                }
+            }
+
+            return datasetSize == productOfUniqueCounts;
+        }
         static void Main(string[] args)
         {
             // Выполнение тестов
@@ -226,7 +253,24 @@ namespace TestGenerator
             {
                 Console.WriteLine($"{num} (Количество единиц: {CountSetBits(num)})");
             }
+            // Пример использования CheckDatasetSize  (ДОБАВЛЕНО ЗДЕСЬ)
+            Console.WriteLine("\nПример проверки размера датасета:");
+            List<TupleWrapperInt> testTuples1 = new List<TupleWrapperInt>
+            {
+                new TupleWrapperInt(new int[] { 1, 2 }),
+                new TupleWrapperInt(new int[] { 1, 3 }),
+                new TupleWrapperInt(new int[] { 2, 2 }),
+                new TupleWrapperInt(new int[] { 2, 3 })
+            };
+            List<TupleWrapperInt> testTuples2 = new List<TupleWrapperInt>
+            {
+                new TupleWrapperInt(new int[] { 1, 2 }),
+                new TupleWrapperInt(new int[] { 1, 3 }),
+                new TupleWrapperInt(new int[] { 2, 2 })
+            };
 
+            Console.WriteLine($"testTuples1: {CheckDatasetSize(testTuples1)}"); // должно быть true
+            Console.WriteLine($"testTuples2: {CheckDatasetSize(testTuples2)}"); // должно быть false
         }
         
     }
