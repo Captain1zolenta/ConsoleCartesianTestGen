@@ -147,13 +147,52 @@ namespace TestGenerator
         //Метод для перебора чисел от 1 до 2^n - 1 в порядке убывания количества бит
         static IEnumerable<ulong> GenerateNumbersByBitCount(int n)
         {
-            if (n <= 0) throw new ArgumentException("n должно быть положительным целым числом.");
+            if(n <= 0) throw new ArgumentException("n должно быть положительным целым числом.");
 
-            ulong maxValue = (ulong)(Math.Pow(2, n) - 1);
-            return Enumerable.Range(0, (int)maxValue + 1)
-                             .Select(i => (ulong)i)
-                             .OrderByDescending(i => CountSetBits(i))
-                             .Skip(1); // Пропускаем 0
+            ulong maxValue = (1UL << n) - 1; // Используем битовый сдвиг
+
+            return GenerateNumbersByBitCountHelper(maxValue).OrderByDescending(i => CountSetBits(i)).ThenBy(a => a);
+        }
+
+        static IEnumerable<ulong> GenerateNumbersByBitCountHelper(ulong maxValue)
+        {
+            for (ulong i = 1; i <= maxValue; i++) // Начинаем с 1
+            {
+                yield return i;
+            }
+        }
+        static void TestGenerateNumbersByBitCount()
+        {
+            Console.WriteLine("\nТестирование GenerateNumbersByBitCount:");
+
+            TestGenerateNumbersByBitCountCase(1, new ulong[] { 1 });
+            TestGenerateNumbersByBitCountCase(2, new ulong[] { 3, 1, 2 });
+            TestGenerateNumbersByBitCountCase(3, new ulong[] { 7, 3, 5, 6, 1, 2, 4 });
+            TestGenerateNumbersByBitCountCase(4, new ulong[] { 15, 7, 11, 13, 14, 3, 5, 6, 9, 10, 12, 1, 2, 4, 8 });
+
+        }
+
+        static void TestGenerateNumbersByBitCountCase(int n, ulong[] expected)
+        {
+            ulong[] actual = GenerateNumbersByBitCount(n).ToArray();
+            if (actual.Length != expected.Length)
+            {
+                Console.WriteLine($"GenerateNumbersByBitCount({n}): Разное количество элементов. Получено {actual.Length}, ожидалось {expected.Length} - Ошибка");
+                return;
+            }
+
+            string message = $"GenerateNumbersByBitCount({n}): ";
+            bool passed = true;
+            for (int i = 0; i < actual.Length; i++)
+            {
+                if (CountSetBits(actual[i]) != CountSetBits(expected[i]) || actual[i] != expected[i])
+                {
+                    passed = false;
+                    break;
+                }
+            }
+            Console.WriteLine($"{message} - {(passed ? "Успешно" : "Ошибка")}");
+
         }
         static void Main(string[] args)
         {
@@ -162,6 +201,7 @@ namespace TestGenerator
             Console.WriteLine("Начало тестирования:");
             Console.WriteLine("=====================");
             TestCountSetBits();
+            TestGenerateNumbersByBitCount();
             Console.WriteLine("=====================");
             Console.WriteLine("Тестирование завершено.");
             Console.WriteLine("=====================");
@@ -181,7 +221,7 @@ namespace TestGenerator
             }
             //Пример использования GenerateNumbersByBitCount
             Console.WriteLine("\nПример генерации чисел по количеству битов:");
-            int n = 4; //числа до 2^4 -1 =15
+            int n = 4; //числа до 2^4 - 1 = 15
             foreach (ulong num in GenerateNumbersByBitCount(n))
             {
                 Console.WriteLine($"{num} (Количество единиц: {CountSetBits(num)})");
