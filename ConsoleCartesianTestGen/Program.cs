@@ -113,19 +113,80 @@ namespace TestGenerator
                 current.RemoveAt(current.Count - 1);
             }
         }
+        //Метод для подсчета единиц в ulong
+        static int CountSetBits(ulong n)
+        {
+            int count = 0;
+            while (n > 0)
+            {
+                count += (int)(n & 1); // Проверяем младший бит
+                n >>= 1; // Сдвигаем число вправо на 1 бит
+            }
+            return count;
+        }
+
+        //Проверка метода CountSetBits
+        static void TestCountSetBits()
+        {
+            Console.WriteLine("Тесты  метода CountSetBits:");
+
+            TestCountSetBitsCase(0UL, 0);
+            TestCountSetBitsCase(1UL, 1);
+            TestCountSetBitsCase(2UL, 1);
+            TestCountSetBitsCase(3UL, 2);
+            TestCountSetBitsCase(15UL, 4);
+            TestCountSetBitsCase(ulong.MaxValue, 64);
+        }
+
+        static void TestCountSetBitsCase(ulong input, int expected)
+        {
+            int result = CountSetBits(input);
+            Console.WriteLine($"CountSetBits({input}) = {result} (Ожидалось: {expected}) - {(result == expected ? "Успешно" : "Ошибка")}");
+        }
+
+        //Метод для перебора чисел от 1 до 2^n - 1 в порядке убывания количества бит
+        static IEnumerable<ulong> GenerateNumbersByBitCount(int n)
+        {
+            if (n <= 0) throw new ArgumentException("n должно быть положительным целым числом.");
+
+            ulong maxValue = (ulong)(Math.Pow(2, n) - 1);
+            return Enumerable.Range(0, (int)maxValue + 1)
+                             .Select(i => (ulong)i)
+                             .OrderByDescending(i => CountSetBits(i))
+                             .Skip(1); // Пропускаем 0
+        }
         static void Main(string[] args)
         {
+            // Выполнение тестов
+            Console.WriteLine("=====================");
+            Console.WriteLine("Начало тестирования:");
+            Console.WriteLine("=====================");
+            TestCountSetBits();
+            Console.WriteLine("=====================");
+            Console.WriteLine("Тестирование завершено.");
+            Console.WriteLine("=====================");
+
+
+            // Генерация и вывод уникальных кортежей
+            Console.WriteLine("\nГенерация и вывод уникальных кортежей:");
             int columnCount = 3;
-            int maxValuesPerColumn = 5;
+            int maxValuesPerColumn = 6;
             TupleWrapperInt[] tuples = GenerateRandomTable(columnCount, maxValuesPerColumn).ToArray();
-
             HashSet<TupleWrapperInt> uniqueTuples = new HashSet<TupleWrapperInt>(tuples);
-
+           
             Console.WriteLine("Уникальные кортежи, дубликаты удалены:");
             foreach (var tuple in uniqueTuples)
             {
                 Console.WriteLine(tuple);
             }
+            //Пример использования GenerateNumbersByBitCount
+            Console.WriteLine("\nПример генерации чисел по количеству битов:");
+            int n = 4; //числа до 2^4 -1 =15
+            foreach (ulong num in GenerateNumbersByBitCount(n))
+            {
+                Console.WriteLine($"{num} (Количество единиц: {CountSetBits(num)})");
+            }
+
         }
         
     }
