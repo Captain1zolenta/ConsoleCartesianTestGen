@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace TestGenerator
@@ -52,21 +53,57 @@ namespace TestGenerator
 
     public class Program
     {
-        static List<TupleWrapperInt> GenerateRandomTable(int columnCount, int maxValuesPerColumn)
+        static Random random = new Random();
+        //Функция для подсчёта количества элементов в декартовом произведении
+        static long CartesianProductCount(int columnCount, int maxValuesPerColumn)
         {
-            Random random = new Random();
+            long result = 1;
+            for (int i = 0; i < columnCount; i++)
+            {
+                result *= maxValuesPerColumn;
+            }
+            return result;
+        }
+        static List<List<TupleWrapperInt>> GenerateRandomTable(int sizeCategory, int columnCount, int maxValuesPerColumn)
+        {
+            Random random = new Random();            
+            int rowsToRemove;
+
+            switch (sizeCategory)
+            {
+                case 1: // Малая размерность (2-3 столбца, 3-6 строк)
+                    columnCount = random.Next(2, 4);
+                    maxValuesPerColumn = random.Next(3, 7);
+                    rowsToRemove = random.Next(Math.Max(0, (int)(CartesianProductCount(columnCount, maxValuesPerColumn) * 0.2) - 1), (int)(CartesianProductCount(columnCount, maxValuesPerColumn) * 0.5)); // Удаляем от 20% до 50% строк
+                    break;
+                case 2: // Средний объем данных (3-4 столбца, 6-10 строк)
+                    columnCount = random.Next(3, 5);
+                    maxValuesPerColumn = random.Next(6, 11);
+                    rowsToRemove = random.Next(Math.Max(0, (int)(CartesianProductCount(columnCount, maxValuesPerColumn) * 0.2) - 1), (int)(CartesianProductCount(columnCount, maxValuesPerColumn) * 0.5)); // Удаляем от 20% до 50% строк
+                    break;
+                case 3: // Большой объем данных (до 4 столбцов и 12 строк)
+                    columnCount = random.Next(2, 5);
+                    maxValuesPerColumn = Math.Min(12, random.Next(8, 13)); // Максимум 12 строк
+                    rowsToRemove = random.Next(Math.Max(0, (int)(CartesianProductCount(columnCount, maxValuesPerColumn) * 0.2) - 1), (int)(CartesianProductCount(columnCount, maxValuesPerColumn) * 0.5)); // Удаляем от 20% до 50% строк
+                    break;
+                default:
+                    throw new ArgumentException("sizeCategory должно быть 1, 2 или 3");
+            }
             List<HashSet<int>> columnValues = Enumerable.Range(0, columnCount)
                 .Select(i => GenerateRandomSet(random, maxValuesPerColumn)).ToList();
 
             List<TupleWrapperInt> cartesianProduct = CartesianProduct(columnValues);
 
-            int rowsToRemove = random.Next(0, cartesianProduct.Count / 2);
+            //int rowsToRemove = random.Next(0, cartesianProduct.Count / 2);
             var indicesToRemove = Enumerable.Range(0, cartesianProduct.Count)
                                             .OrderBy(x => random.Next())
                                             .Take(rowsToRemove)
                                             .ToList();
 
-            return cartesianProduct.Where((x, i) => !indicesToRemove.Contains(i)).ToList();
+            //return cartesianProduct.Where((x, i) => !indicesToRemove.Contains(i)).ToList();
+            List<TupleWrapperInt> reducedDataset = cartesianProduct.Where((x, i) => !indicesToRemove.Contains(i)).ToList();
+            //Возвращаем список, содержащий полный и уменьшенный датасеты.
+            return new List<List<TupleWrapperInt>>() { cartesianProduct, reducedDataset };
         }
 
         static HashSet<int> GenerateRandomSet(Random random, int maxValues)
@@ -274,9 +311,50 @@ namespace TestGenerator
             }
             return subset;
         }
-
+        // Вспомогательная функция для сохранения датасета в файл
+        static void SaveDatasetToFile(List<TupleWrapperInt> dataset, string fileName)
+        {
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+            using (StreamWriter writer = new StreamWriter(filePath))
+            {
+                foreach (var tuple in dataset)
+                {
+                    writer.WriteLine(tuple);
+                }
+            }
+        }
+        // Новая функция для сохранения  списка  ошибочного датасета в файл
+        static void SaveErrorDatasetsToFile(List<string> errorDatasets, string fileName)
+        {
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+            using (StreamWriter writer = new StreamWriter(filePath))
+            {
+                foreach (var error in errorDatasets)
+                {
+                    writer.WriteLine(error);
+                }
+            }
+        }
+        static int DisplayMenu()
+        {
+            Console.WriteLine("Выберите размер таблицы:");
+            Console.WriteLine("1. Малая размерность (2-3 столбца, 3-6 строк)");
+            Console.WriteLine("2. Средний объем данных (3-4 столбца, 6-10 строк)");
+            Console.WriteLine("3. Большой объем данных (до 4 столбцов и 12 строк)");
+            Console.Write("Введите номер: ");
+            int choice;
+            while (!int.TryParse(Console.ReadLine(), out choice) || choice < 1 || choice > 3)
+            {
+                Console.Write("Неверный ввод. Пожалуйста, введите номер от 1 до 3: ");
+            }
+            return choice;
+        }
         static void Main(string[] args)
         {
+            // Список для хранения ошибочных датасетов
+            List<string> errorDatasets = new List<string>();
+
+            // Тесты (можно закомментировать при генерации большого количества датасетов)
             Console.WriteLine("=====================");
             Console.WriteLine("Начало тестирования:");
             Console.WriteLine("=====================");
@@ -286,10 +364,12 @@ namespace TestGenerator
             Console.WriteLine("Тестирование завершено.");
             Console.WriteLine("=====================");
 
+            // Генерация и вывод уникальных кортежей (можно закомментировать при генерации большого количества датасетов)
             Console.WriteLine("\nГенерация и вывод уникальных кортежей:");
-            int columnCount = 3;
-            int maxValuesPerColumn = 6;
-            TupleWrapperInt[] tuples = GenerateRandomTable(columnCount, maxValuesPerColumn).ToArray();
+            int columnCountUnique = 3; //Переименовали переменные
+            int maxValuesPerColumnUnique = 6; //Переименовали переменные
+            List<List<TupleWrapperInt>> uniqueTuplesList = GenerateRandomTable(1, columnCountUnique, maxValuesPerColumnUnique);
+            TupleWrapperInt[] tuples = uniqueTuplesList[0].ToArray();
             HashSet<TupleWrapperInt> uniqueTuples = new HashSet<TupleWrapperInt>(tuples);
 
             Console.WriteLine("Уникальные кортежи, дубликаты удалены:");
@@ -298,6 +378,7 @@ namespace TestGenerator
                 Console.WriteLine(tuple);
             }
 
+            // Пример генерации чисел по количеству битов (можно закомментировать при генерации большого количества датасетов)
             Console.WriteLine("\nПример генерации чисел по количеству битов:");
             int n = 4;
             foreach (ulong num in GenerateNumbersByBitCount(n))
@@ -305,59 +386,101 @@ namespace TestGenerator
                 Console.WriteLine($"{num} (Количество единиц: {CountSetBits(num)})");
             }
 
+            // Пример проверки размера датасета (можно закомментировать при генерации большого количества датасетов)
             Console.WriteLine("\nПример проверки размера датасета:");
             List<TupleWrapperInt> testTuples1 = new List<TupleWrapperInt>
-            {
-                new TupleWrapperInt(new int[] { 1, 2 }),
-                new TupleWrapperInt(new int[] { 1, 3 }),
-                new TupleWrapperInt(new int[] { 2, 2 }),
-                new TupleWrapperInt(new int[] { 2, 3 })
-            };
+    {
+        new TupleWrapperInt(new int[] { 1, 2 }),
+        new TupleWrapperInt(new int[] { 1, 3 }),
+        new TupleWrapperInt(new int[] { 2, 2 }),
+        new TupleWrapperInt(new int[] { 2, 3 })
+    };
             List<TupleWrapperInt> testTuples2 = new List<TupleWrapperInt>
+    {
+        new TupleWrapperInt(new int[] { 1, 2 }),
+        new TupleWrapperInt(new int[] { 1, 3 }),
+        new TupleWrapperInt(new int[] { 2, 2 })
+    };
+
+            Console.WriteLine($"testTuples1: {CheckDatasetSize(testTuples1)}"); // должно быть true
+            Console.WriteLine($"testTuples2: {CheckDatasetSize(testTuples2)}"); // должно быть false
+
+            // Генерация 20 датасетов и сохранение в файлы
+            Console.WriteLine("\nГенерация 20 датасетов:");
+            for (int datasetIndex = 1; datasetIndex <= 20; datasetIndex++)
             {
-                new TupleWrapperInt(new int[] { 1, 2 }),
-                new TupleWrapperInt(new int[] { 1, 3 }),
-                new TupleWrapperInt(new int[] { 2, 2 })
-            };
+                int sizeCategory = DisplayMenu();
+                int columnCount;
+                int maxValuesPerColumn;
 
-            Console.WriteLine($"testTuples1: {CheckDatasetSize(testTuples1)}");
-            Console.WriteLine($"testTuples2: {CheckDatasetSize(testTuples2)}");
-
-            Console.WriteLine("\nПример поиска минимального полного подмножества:");
-            List<TupleWrapperInt> sourceData = GenerateRandomTable(2, 3);
-            Console.WriteLine("\nИсходный датасет:");
-            foreach (var item in sourceData) Console.WriteLine(item);
-            
-            try
-            {
-                (ulong foundSubset, int size) = FindMinimalFullSubset(sourceData);
-                Console.WriteLine($"\nНайден минимальный полный подмножество, Размер: {size}");
-
-                List<TupleWrapperInt> minimalSubset = ReconstructSubset(sourceData, foundSubset);
-
-                Console.WriteLine("\nКортежи в минимальном подмножестве:");
-                foreach (var tuple in minimalSubset)
+                switch (sizeCategory)
                 {
-                    Console.WriteLine(tuple);
+                    case 1:
+                        columnCount = random.Next(2, 4);
+                        maxValuesPerColumn = random.Next(3, 7);
+                        break;
+                    case 2:
+                        columnCount = random.Next(3, 5);
+                        maxValuesPerColumn = random.Next(6, 11);
+                        break;
+                    case 3:
+                        columnCount = random.Next(2, 5);
+                        maxValuesPerColumn = Math.Min(12, random.Next(8, 13));
+                        break;
+                    default:
+                        throw new ArgumentException("Invalid sizeCategory");
+                }
+                List<List<TupleWrapperInt>> datasets = GenerateRandomTable(sizeCategory, columnCount, maxValuesPerColumn); //Исправлено: передаем три аргумента
+                string baseFileName = $"dataset_{datasetIndex}";
+
+
+
+                SaveDatasetToFile(datasets[0], baseFileName + ".in"); // Полный датасет
+                SaveDatasetToFile(datasets[1], baseFileName + "_reduced.in"); // Датасет с удаленными строками
+
+                try
+                {
+                    (ulong foundSubset, int size) = FindMinimalFullSubset(datasets[1]); // Обрабатываем reduced dataset
+                    List<TupleWrapperInt> minimalSubset = ReconstructSubset(datasets[1], foundSubset);
+                    SaveDatasetToFile(minimalSubset, baseFileName + ".ans"); // Сохраняем в .ans
+
+                    Console.WriteLine($"\nДатасет {datasetIndex}:");
+                    Console.WriteLine($"  Полный датасет сохранен в {baseFileName}.in");
+                    Console.WriteLine($"  Уменьшенный датасет сохранен в {baseFileName}_reduced.in");
+                    Console.WriteLine($"  Минимальное подмножество сохранено в {baseFileName}.ans (размер: {size})");
+                    Console.WriteLine($"    Битовое представление подмножества: (размер: {size})");
+
+                    //Вывод кортежей минимального подмножества в консоль (опционально):
+                    Console.WriteLine("    Кортежи в минимальном подмножестве:");
+                    foreach (var tuple in minimalSubset)
+                    {
+                        Console.WriteLine($"      {tuple}");
+                    }
+
+
+                }
+                catch (Exception ex)
+                {
+                    errorDatasets.Add(datasetIndex.ToString()); // Добавляем только номер датасета
+                    Console.WriteLine($"\nОшибка при обработке датасета {baseFileName}: {ex.Message}");
                 }
             }
-            catch (Exception ex)
+            // Вывод списка ошибочных датасетов
+            if (errorDatasets.Any())
             {
-                Console.WriteLine($"\nОшибка: {ex.Message}");
-            }
-        }
-        /*
-        static List<TupleWrapperInt> ReconstructSubset(List<TupleWrapperInt> source, ulong subsetRepresentation)
-        {
-            List<TupleWrapperInt> subset = new List<TupleWrapperInt>();
-            for (int i = 0; i < source.Count; i++)
-            {
-                if ((subsetRepresentation & (1UL << i)) != 0)
+                Console.WriteLine("\nОшибочные датасеты:");
+                foreach (var error in errorDatasets)
                 {
-                    subset.Add(source[i]);
+                    Console.WriteLine(error);
                 }
+                SaveErrorDatasetsToFile(errorDatasets, "error_datasets.txt");
             }
-            return subset;
-        }*/
+            else
+            {
+                Console.WriteLine("\nОшибочные датасеты отсутствуют.");
+            }
+
+            Console.WriteLine("\nГенерация и сохранение 20 датасетов завершены.");
+        }        
     }
 }
