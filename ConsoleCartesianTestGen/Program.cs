@@ -1,21 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace TestGenerator
 {
-   
-    //3 Класс для кортежа с переопределенными Equals и GetHashCode
     public class TupleWrapperInt : IEquatable<TupleWrapperInt>
-{
+    {
         public int[] Values { get; }
 
         public TupleWrapperInt(int[] values)
         {
             Values = values;
         }
-        //Обеспечивает сравнение объектов TupleWrapperInt с другими объектами
+
         public override bool Equals(object obj)
         {
             return Equals(obj as TupleWrapperInt);
@@ -34,42 +31,33 @@ namespace TestGenerator
             return true;
         }
 
-
         public override int GetHashCode()
         {
-            unchecked // Переполнение допустимо, просто происходит перенос
-            {   
-                int hash = Values.Length; // Начальное значение хэш-кода - длина массива
-
-                // Цикл по всем значениям в массиве
+            unchecked
+            {
+                int hash = Values.Length;
                 for (int i = 0; i < Values.Length; i++)
                 {
-                    // Побитовое исключающее ИЛИ (XOR) текущего хэш-кода с хэш-кодом элемента.
-                    // Если элемент null, используется 0.
                     hash ^= Values[i].GetHashCode();
                 }
                 return hash;
             }
         }
-        // Для отладки
+
         public override string ToString()
         {
-            //return string.Join(" ", Values?.Select(v => v?.ToString()) ?? Enumerable.Empty<string>());
             return string.Join(" ", Values);
         }
     }
 
     public class Program
-{
-        //4 Генерирует случайную таблицу (неполное декартово произведение) с указанным количеством
-        // столбцов и максимальным количеством значений в каждом столбце.
+    {
         static List<TupleWrapperInt> GenerateRandomTable(int columnCount, int maxValuesPerColumn)
         {
             Random random = new Random();
             List<HashSet<int>> columnValues = Enumerable.Range(0, columnCount)
                 .Select(i => GenerateRandomSet(random, maxValuesPerColumn)).ToList();
 
-            //CartesianProduct теперь возвращает List<TupleWrapper<int>>
             List<TupleWrapperInt> cartesianProduct = CartesianProduct(columnValues);
 
             int rowsToRemove = random.Next(0, cartesianProduct.Count / 2);
@@ -80,13 +68,13 @@ namespace TestGenerator
 
             return cartesianProduct.Where((x, i) => !indicesToRemove.Contains(i)).ToList();
         }
-        // Генерирует множество случайных целых чисел.
+
         static HashSet<int> GenerateRandomSet(Random random, int maxValues)
         {
             int count = random.Next(1, maxValues + 1);
             return new HashSet<int>(Enumerable.Range(0, count).Select(_ => random.Next(1, 101)));
         }
-        // Вычисляет декартово произведение множеств, используя рекурсивный подход.
+
         static List<TupleWrapperInt> CartesianProduct(List<HashSet<int>> sets)
         {
             if (sets == null || sets.Count == 0) return new List<TupleWrapperInt>();
@@ -97,7 +85,6 @@ namespace TestGenerator
             return resultTuples;
         }
 
-        // Рекурсивная функция для вычисления декартова произведения.
         static void CartesianProductRecursive(List<HashSet<int>> sets, int index, List<int> current, List<TupleWrapperInt> result)
         {
             if (index == sets.Count)
@@ -113,22 +100,21 @@ namespace TestGenerator
                 current.RemoveAt(current.Count - 1);
             }
         }
-        //6Метод для подсчета единиц в ulong
+
         static int CountSetBits(ulong n)
         {
             int count = 0;
             while (n > 0)
             {
-                count += (int)(n & 1); // Проверяем младший бит
-                n >>= 1; // Сдвигаем число вправо на 1 бит
+                count += (int)(n & 1);
+                n >>= 1;
             }
             return count;
         }
 
-        //7Проверка метода CountSetBits
         static void TestCountSetBits()
         {
-            Console.WriteLine("Тесты  метода CountSetBits:");
+            Console.WriteLine("Тесты метода CountSetBits:");
 
             TestCountSetBitsCase(0UL, 0);
             TestCountSetBitsCase(1UL, 1);
@@ -144,23 +130,23 @@ namespace TestGenerator
             Console.WriteLine($"CountSetBits({input}) = {result} (Ожидалось: {expected}) - {(result == expected ? "Успешно" : "Ошибка")}");
         }
 
-        //8Метод для перебора чисел от 1 до 2^n - 1 в порядке убывания количества бит
         static IEnumerable<ulong> GenerateNumbersByBitCount(int n)
         {
-            if(n <= 0) throw new ArgumentException("n должно быть положительным целым числом.");
+            if (n <= 0) throw new ArgumentException("n должно быть положительным целым числом.");
 
-            ulong maxValue = (1UL << n) - 1; // Используем битовый сдвиг
+            ulong maxValue = (1UL << n) - 1;
 
             return GenerateNumbersByBitCountHelper(maxValue).OrderByDescending(i => CountSetBits(i)).ThenBy(a => a);
         }
 
         static IEnumerable<ulong> GenerateNumbersByBitCountHelper(ulong maxValue)
         {
-            for (ulong i = 1; i <= maxValue; i++) // Начинаем с 1
+            for (ulong i = 1; i <= maxValue; i++)
             {
                 yield return i;
             }
         }
+
         static void TestGenerateNumbersByBitCount()
         {
             Console.WriteLine("\nТестирование GenerateNumbersByBitCount:");
@@ -169,7 +155,6 @@ namespace TestGenerator
             TestGenerateNumbersByBitCountCase(2, new ulong[] { 3, 1, 2 });
             TestGenerateNumbersByBitCountCase(3, new ulong[] { 7, 3, 5, 6, 1, 2, 4 });
             TestGenerateNumbersByBitCountCase(4, new ulong[] { 15, 7, 11, 13, 14, 3, 5, 6, 9, 10, 12, 1, 2, 4, 8 });
-
         }
 
         static void TestGenerateNumbersByBitCountCase(int n, ulong[] expected)
@@ -192,16 +177,13 @@ namespace TestGenerator
                 }
             }
             Console.WriteLine($"{message} - {(passed ? "Успешно" : "Ошибка")}");
-
         }
 
-        //9метод для проверки  равенства размера датасета произведению
-        //количеств уникальных значений каждой колонки
         static bool CheckDatasetSize(List<TupleWrapperInt> tuples)
         {
-            if (tuples == null || tuples.Count == 0) return true; // Пустой датасет - условие выполняется
+            if (tuples == null || tuples.Count == 0) return true;
 
-            int columnCount = tuples[0].Values.Length; // Количество столбцов
+            int columnCount = tuples[0].Values.Length;
             if (tuples.Any(t => t.Values.Length != columnCount))
             {
                 throw new ArgumentException("Все кортежи должны иметь одинаковое количество столбцов.");
@@ -214,7 +196,7 @@ namespace TestGenerator
             {
                 var uniqueValues = tuples.Select(t => t.Values[i]).Distinct().Count();
                 productOfUniqueCounts *= uniqueValues;
-                if (productOfUniqueCounts > long.MaxValue / uniqueValues) //Проверка переполнения
+                if (productOfUniqueCounts > long.MaxValue / uniqueValues)
                 {
                     throw new OverflowException("Переполнение при вычислении произведения.");
                 }
@@ -222,15 +204,14 @@ namespace TestGenerator
 
             return datasetSize == productOfUniqueCounts;
         }
+
         static (ulong result, int result_size) FindMinimalFullSubset(List<TupleWrapperInt> source)
         {
-            // Удаление дубликатов
             source = source.Distinct().ToList();
 
-            // Проверка исходного датасета на полноту
             if (CheckDatasetSize(source))
             {
-                ulong fullSetRepresentation = (1UL << source.Count) - 1; // Битовое представление полного множества
+                ulong fullSetRepresentation = (1UL << source.Count) - 1;
                 return (fullSetRepresentation, source.Count);
             }
 
@@ -274,7 +255,6 @@ namespace TestGenerator
             return (result, result_size);
         }
 
-        // Метод для генерации подмножеств
         static IEnumerable<ulong> GetSubSets(int n)
         {
             for (ulong i = 1; i < (1UL << n); i++)
@@ -282,10 +262,21 @@ namespace TestGenerator
                 yield return i;
             }
         }
+        static List<TupleWrapperInt> ReconstructSubset(List<TupleWrapperInt> source, ulong subsetRepresentation)
+        {
+            List<TupleWrapperInt> subset = new List<TupleWrapperInt>();
+            for (int i = 0; i < source.Count; i++)
+            {
+                if ((subsetRepresentation & (1UL << i)) != 0)
+                {
+                    subset.Add(source[i]);
+                }
+            }
+            return subset;
+        }
 
         static void Main(string[] args)
         {
-            // Выполнение тестов
             Console.WriteLine("=====================");
             Console.WriteLine("Начало тестирования:");
             Console.WriteLine("=====================");
@@ -295,27 +286,25 @@ namespace TestGenerator
             Console.WriteLine("Тестирование завершено.");
             Console.WriteLine("=====================");
 
-
-            // Генерация и вывод уникальных кортежей
             Console.WriteLine("\nГенерация и вывод уникальных кортежей:");
             int columnCount = 3;
             int maxValuesPerColumn = 6;
             TupleWrapperInt[] tuples = GenerateRandomTable(columnCount, maxValuesPerColumn).ToArray();
             HashSet<TupleWrapperInt> uniqueTuples = new HashSet<TupleWrapperInt>(tuples);
-           
+
             Console.WriteLine("Уникальные кортежи, дубликаты удалены:");
             foreach (var tuple in uniqueTuples)
             {
                 Console.WriteLine(tuple);
             }
-            //Пример использования GenerateNumbersByBitCount
+
             Console.WriteLine("\nПример генерации чисел по количеству битов:");
-            int n = 4; //числа до 2^4 - 1 = 15
+            int n = 4;
             foreach (ulong num in GenerateNumbersByBitCount(n))
             {
                 Console.WriteLine($"{num} (Количество единиц: {CountSetBits(num)})");
             }
-            // Пример использования CheckDatasetSize  (ДОБАВЛЕНО ЗДЕСЬ)
+
             Console.WriteLine("\nПример проверки размера датасета:");
             List<TupleWrapperInt> testTuples1 = new List<TupleWrapperInt>
             {
@@ -331,19 +320,18 @@ namespace TestGenerator
                 new TupleWrapperInt(new int[] { 2, 2 })
             };
 
-            Console.WriteLine($"testTuples1: {CheckDatasetSize(testTuples1)}"); // должно быть true
-            Console.WriteLine($"testTuples2: {CheckDatasetSize(testTuples2)}"); // должно быть false
+            Console.WriteLine($"testTuples1: {CheckDatasetSize(testTuples1)}");
+            Console.WriteLine($"testTuples2: {CheckDatasetSize(testTuples2)}");
 
-            // Пример использования FindMinimalFullSubset
             Console.WriteLine("\nПример поиска минимального полного подмножества:");
             List<TupleWrapperInt> sourceData = GenerateRandomTable(2, 3);
             Console.WriteLine("\nИсходный датасет:");
             foreach (var item in sourceData) Console.WriteLine(item);
-
+            
             try
             {
                 (ulong foundSubset, int size) = FindMinimalFullSubset(sourceData);
-                Console.WriteLine($"\nНайден минимальный полный подмножество (битовое представление): {Convert.ToString(foundSubset, 2)}, Размер: {size}");
+                Console.WriteLine($"\nНайден минимальный полный подмножество, Размер: {size}");
 
                 List<TupleWrapperInt> minimalSubset = ReconstructSubset(sourceData, foundSubset);
 
@@ -358,8 +346,7 @@ namespace TestGenerator
                 Console.WriteLine($"\nОшибка: {ex.Message}");
             }
         }
-
-        // Вспомогательная функция для реконструкции подмножества
+        /*
         static List<TupleWrapperInt> ReconstructSubset(List<TupleWrapperInt> source, ulong subsetRepresentation)
         {
             List<TupleWrapperInt> subset = new List<TupleWrapperInt>();
@@ -371,7 +358,6 @@ namespace TestGenerator
                 }
             }
             return subset;
-        }
+        }*/
     }
-      
 }
