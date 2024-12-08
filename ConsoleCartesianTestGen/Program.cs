@@ -6,7 +6,7 @@ using System.Linq;
 namespace TestGenerator
 {
    
-    // Класс для кортежа с переопределенными Equals и GetHashCode
+    //3 Класс для кортежа с переопределенными Equals и GetHashCode
     public class TupleWrapperInt : IEquatable<TupleWrapperInt>
 {
         public int[] Values { get; }
@@ -15,7 +15,7 @@ namespace TestGenerator
         {
             Values = values;
         }
-        //Обеспечивает сравнение объектов TupleWrapper<T> с другими объектами
+        //Обеспечивает сравнение объектов TupleWrapperInt с другими объектами
         public override bool Equals(object obj)
         {
             return Equals(obj as TupleWrapperInt);
@@ -61,7 +61,7 @@ namespace TestGenerator
 
     public class Program
 {
-        // Генерирует случайную таблицу (неполное декартово произведение) с указанным количеством
+        //4 Генерирует случайную таблицу (неполное декартово произведение) с указанным количеством
         // столбцов и максимальным количеством значений в каждом столбце.
         static List<TupleWrapperInt> GenerateRandomTable(int columnCount, int maxValuesPerColumn)
         {
@@ -113,7 +113,7 @@ namespace TestGenerator
                 current.RemoveAt(current.Count - 1);
             }
         }
-        //Метод для подсчета единиц в ulong
+        //6Метод для подсчета единиц в ulong
         static int CountSetBits(ulong n)
         {
             int count = 0;
@@ -125,7 +125,7 @@ namespace TestGenerator
             return count;
         }
 
-        //Проверка метода CountSetBits
+        //7Проверка метода CountSetBits
         static void TestCountSetBits()
         {
             Console.WriteLine("Тесты  метода CountSetBits:");
@@ -144,7 +144,7 @@ namespace TestGenerator
             Console.WriteLine($"CountSetBits({input}) = {result} (Ожидалось: {expected}) - {(result == expected ? "Успешно" : "Ошибка")}");
         }
 
-        //Метод для перебора чисел от 1 до 2^n - 1 в порядке убывания количества бит
+        //8Метод для перебора чисел от 1 до 2^n - 1 в порядке убывания количества бит
         static IEnumerable<ulong> GenerateNumbersByBitCount(int n)
         {
             if(n <= 0) throw new ArgumentException("n должно быть положительным целым числом.");
@@ -194,7 +194,8 @@ namespace TestGenerator
             Console.WriteLine($"{message} - {(passed ? "Успешно" : "Ошибка")}");
 
         }
-        //метод для проверки проверить равенство размера датасета произведению
+
+        //9метод для проверки  равенства размера датасета произведению
         //количеств уникальных значений каждой колонки
         static bool CheckDatasetSize(List<TupleWrapperInt> tuples)
         {
@@ -221,6 +222,67 @@ namespace TestGenerator
 
             return datasetSize == productOfUniqueCounts;
         }
+        static (ulong result, int result_size) FindMinimalFullSubset(List<TupleWrapperInt> source)
+        {
+            // Удаление дубликатов
+            source = source.Distinct().ToList();
+
+            // Проверка исходного датасета на полноту
+            if (CheckDatasetSize(source))
+            {
+                ulong fullSetRepresentation = (1UL << source.Count) - 1; // Битовое представление полного множества
+                return (fullSetRepresentation, source.Count);
+            }
+
+            List<TupleWrapperInt> subset = new List<TupleWrapperInt>();
+            ulong result = 0;
+            int result_size = 0;
+
+            foreach (ulong i in GetSubSets(source.Count))
+            {
+                subset.Clear();
+
+                for (int j = 0; j < source.Count; j++)
+                {
+                    if ((i & (1UL << j)) != 0)
+                    {
+                        subset.Add(source[j]);
+                    }
+                }
+
+                if (CheckDatasetSize(subset))
+                {
+                    if (result != 0 && subset.Count == result_size)
+                    {
+                        throw new Exception("Найдено дублирующееся решение минимального размера.");
+                    }
+
+                    result = i;
+                    result_size = subset.Count;
+
+                    if (result != 0 && subset.Count < result_size)
+                    {
+                        break;
+                    }
+                }
+                else if (result != 0 && subset.Count < result_size)
+                {
+                    break;
+                }
+            }
+
+            return (result, result_size);
+        }
+
+        // Метод для генерации подмножеств
+        static IEnumerable<ulong> GetSubSets(int n)
+        {
+            for (ulong i = 1; i < (1UL << n); i++)
+            {
+                yield return i;
+            }
+        }
+
         static void Main(string[] args)
         {
             // Выполнение тестов
@@ -271,7 +333,45 @@ namespace TestGenerator
 
             Console.WriteLine($"testTuples1: {CheckDatasetSize(testTuples1)}"); // должно быть true
             Console.WriteLine($"testTuples2: {CheckDatasetSize(testTuples2)}"); // должно быть false
+
+            // Пример использования FindMinimalFullSubset
+            Console.WriteLine("\nПример поиска минимального полного подмножества:");
+            List<TupleWrapperInt> sourceData = GenerateRandomTable(2, 3);
+            Console.WriteLine("\nИсходный датасет:");
+            foreach (var item in sourceData) Console.WriteLine(item);
+
+            try
+            {
+                (ulong foundSubset, int size) = FindMinimalFullSubset(sourceData);
+                Console.WriteLine($"\nНайден минимальный полный подмножество (битовое представление): {Convert.ToString(foundSubset, 2)}, Размер: {size}");
+
+                List<TupleWrapperInt> minimalSubset = ReconstructSubset(sourceData, foundSubset);
+
+                Console.WriteLine("\nКортежи в минимальном подмножестве:");
+                foreach (var tuple in minimalSubset)
+                {
+                    Console.WriteLine(tuple);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nОшибка: {ex.Message}");
+            }
         }
-        
+
+        // Вспомогательная функция для реконструкции подмножества
+        static List<TupleWrapperInt> ReconstructSubset(List<TupleWrapperInt> source, ulong subsetRepresentation)
+        {
+            List<TupleWrapperInt> subset = new List<TupleWrapperInt>();
+            for (int i = 0; i < source.Count; i++)
+            {
+                if ((subsetRepresentation & (1UL << i)) != 0)
+                {
+                    subset.Add(source[i]);
+                }
+            }
+            return subset;
+        }
     }
+      
 }
